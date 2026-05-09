@@ -1,0 +1,113 @@
+model:
+  base_learning_rate: 2.0e-4
+  scale_lr: True
+  target: src.models.VideoVaePlus.videovaeplus_ref0conv.AutoencoderKL2plus1D_1dcnn
+  params:
+    # monitor: "val/rec_loss"
+    video_key: video
+    image_key: video
+    img_video_joint_train: False
+    caption_guide: False
+    use_quant_conv: False
+    ignore_keys_3d: ['loss']
+    input_dim: 5
+
+    pretrained: False
+    reusing: True
+    num_layers: 10 #adjust num of attention layers here
+    num_heads: 12
+    head_dim: 128
+    
+    use_lora: False
+    gradient_checkpointing: False
+    dropout_p: 0.7
+    
+    lossconfig:
+      target: src.modules.losses.LPIPSWithDiscriminator3D
+      params:
+        disc_start: 1
+        kl_weight: 0.0
+        disc_weight: 0.0
+
+    ddconfig:
+      double_z: True
+      z_channels: 16
+      resolution: 216
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]
+      temporal_down_factor: 1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
+    
+    ppconfig:
+      temporal_scale_factor: 4
+      z_channels: 16
+      out_ch: 16
+      ch: 16
+      attn_temporal_factor: []
+data:
+  target: data.lightning_data.DataModuleFromConfig
+  params:
+    img_video_joint_train: False
+    batch_size: 4
+    num_workers: 8
+    wrap: False
+    train:
+      target: data.dataset.DatasetVideoLoader
+      params:
+        csv_file: # enter csv path here
+        resolution: [216, 216]
+        video_length: 4
+        subset_split: all
+        target_fps: 7.5
+    validation:
+      target: data.dataset.DatasetVideoLoader
+      params:
+        csv_file: # enter csv path here
+        resolution: [216, 216]
+        video_length: 5
+        subset_split: all
+        target_fps: 7.5
+
+lightning:
+  find_unused_parameters: True
+  strategy:
+    target: pytorch_lightning.strategies.DeepSpeedStrategy
+    params:
+      stage: 1
+      config:
+        zero_optimization:
+          stage: 1
+  callbacks:
+    image_logger:
+        target: utils.callbacks.ImageLogger
+        params:
+          batch_frequency: 500
+          max_images: 1
+          to_local: False
+          save_dir: ./image_logs/videovaeplus
+    metrics_over_trainsteps_checkpoint:
+      target: pytorch_lightning.callbacks.ModelCheckpoint
+      params:
+        filename: '{epoch:06}-{step:09}'
+        save_weights_only: False
+        every_n_train_steps: 1000
+        save_last: False
+  trainer:
+    log_every_n_steps: 1 
+    benchmark: True
+    accumulate_grad_batches: 1
+    accelerator: cuda
+    num_nodes: 1 
+    devices: -1 #num of gpus
+    max_epochs: 100000
+  logger:
+    target: pytorch_lightning.loggers.WandbLogger
+    params:
+      project: "videovaeplus"
+      name: "4f-216*216-dropout0.7-10layer"
+      save_dir: "wandb_logs"
+      log_model: False

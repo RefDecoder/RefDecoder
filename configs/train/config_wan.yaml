@@ -1,0 +1,101 @@
+model:
+  target: src.models.transformerwrapper.AutoencoderWanTransformer
+  base_learning_rate: 2.0e-4
+  params:
+    base_learning_rate: ${model.base_learning_rate} 
+    image_key: video
+    input_dim: 5
+
+    use_discriminator: False
+    freeze_encoder: True
+    freeze_quant_conv: True
+    freeze_decoder: False
+    use_reference: True
+    skip_decoder_attention: False
+
+    gradient_checkpointing: False
+
+    chunk: 2
+    num_layers: 10 #adjust num of attention layers here
+    num_heads: 12
+    head_dim: 128
+    reusing: True
+    pretrained: True
+
+    use_lora: False
+
+    track_layers: True
+    log_og_loss: False
+    inference_w_dropout: False
+    dropout_p: 0.7
+
+    lossconfig:
+      target: src.modules.losses.LPIPSWithDiscriminator3D
+      params:
+        disc_start: 1
+        kl_weight: 0.0
+        disc_weight: 0.0
+        perceptual_weight: 1.0
+data:
+  target: data.lightning_data.DataModuleFromConfig
+  params:
+    img_video_joint_train: False
+    batch_size: 2
+    num_workers: 8
+    wrap: false
+    train:
+      target: data.dataset.DatasetVideoLoader
+      params:
+        csv_file: # enter csv path here
+        resolution: [480, 832]
+        video_length: 5
+        subset_split: all
+        target_fps: 15
+    validation:
+      target: data.dataset.DatasetVideoLoader
+      params:
+        csv_file: # enter csv path here
+        resolution: [480, 832]
+        video_length: 5
+        subset_split: all
+        target_fps: 15
+
+lightning:
+  find_unused_parameters: True
+  strategy:
+    target: pytorch_lightning.strategies.DeepSpeedStrategy
+    params:
+      stage: 1
+      config:
+        zero_optimization:
+          stage: 1
+  callbacks:
+    image_logger:
+      target: utils.callbacks.ImageLogger
+      params:
+        batch_frequency: 500
+        max_images: 1
+        to_local: False
+        save_dir: ./image_logs/wan2.1
+    metrics_over_trainsteps_checkpoint:
+      target: pytorch_lightning.callbacks.ModelCheckpoint
+      params:
+        filename: '{epoch:06}-{step:09}'
+        save_weights_only: False
+        every_n_train_steps: 2000
+        save_last: False
+  trainer:
+    log_every_n_steps: 1 
+    benchmark: True
+    accumulate_grad_batches: 1
+    accelerator: cuda
+    num_nodes: 1 
+    devices: -1 #num of gpus
+    max_epochs: 100000
+  logger:
+    target: pytorch_lightning.loggers.WandbLogger
+    params:
+      project: "wan2.1"
+      name: "5f-480p-10layer"
+      save_dir: "wandb_logs"
+      log_model: false

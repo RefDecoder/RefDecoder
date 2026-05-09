@@ -1,0 +1,51 @@
+model:
+  base_learning_rate: 2.0e-4
+  scale_lr: True
+  target: src.models.VideoVaePlus.videovaeplus_ref0conv.AutoencoderKL2plus1D_1dcnn
+  params:
+    # monitor: "val/rec_loss"
+    video_key: video
+    image_key: video
+    img_video_joint_train: False
+    caption_guide: False
+    use_quant_conv: False
+    ignore_keys_3d: ['loss']
+    input_dim: 5
+
+    pretrained: False
+    reusing: True
+    num_layers: 10
+    num_heads: 12
+    head_dim: 128
+    
+    use_lora: False
+    gradient_checkpointing: False
+    dropout_p: 0.0
+    ckpt_path: # enter ckpt path here
+
+    lossconfig:
+      target: src.modules.losses.LPIPSWithDiscriminator3D
+      params:
+        disc_start: 1
+        kl_weight: 0.0
+        disc_weight: 0.0
+
+    ddconfig:
+      double_z: True
+      z_channels: 16
+      resolution: 216
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]
+      temporal_down_factor: 1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
+    
+    ppconfig:
+      temporal_scale_factor: 4
+      z_channels: 16
+      out_ch: 16
+      ch: 16
+      attn_temporal_factor: []
