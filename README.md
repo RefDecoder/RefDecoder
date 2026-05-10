@@ -1,4 +1,3 @@
-First Draft, will do more updates
 # RefDecoder
 
 Reference-conditioned video VAE decoding for high-fidelity video reconstruction.
@@ -8,7 +7,7 @@ RefDecoder is a training and inference framework for adding reference-frame cond
 - **Wan2.1 VAE**: a RefDecoder path built on the Wan2.1 image-to-video VAE decoder.
 - **VideoVAE+**: a RefDecoder path built on a 2+1D VideoVAE+ autoencoder.
 
-The repository focuses on reconstruction, finetuning, and evaluation of video VAEs. It is not a full text-to-video generation pipeline like the original Wan2.1 repository.
+The repository focuses on reconstruction, finetuning, and video generation workflows that replace the original VAE decoder with RefDecoder. It is not a full text-to-video training pipeline like the original Wan2.1 repository.
 
 ## News
 
@@ -21,7 +20,7 @@ The repository focuses on reconstruction, finetuning, and evaluation of video VA
 - **Backbone-compatible design**: the same training and inference entry points support both Wan2.1 VAE and VideoVAE+ variants.
 - **Decoder-focused finetuning**: the configs freeze large parts of the pretrained autoencoder and train the reference modules, decoder-side transformer blocks, and selected decoder parameters.
 - **Chunked long-video inference**: videos are reconstructed in chunks while using a consistent reference frame from the original input video.
-- **Training and evaluation utilities**: the repo includes Lightning/DeepSpeed training, image logging, reconstruction metrics, and VBench-oriented decoding scripts.
+- **Training and video generation utilities**: the repo includes Lightning/DeepSpeed training, image logging, reconstruction metrics, and VBench-oriented generation examples.
 
 ## Project Structure
 
@@ -42,7 +41,7 @@ RefDecoder/
 ├── scripts/
 │   ├── run_train.sh
 │   └── run_inference.sh
-└── VBench_eval/                     # VBench helper scripts
+└── VBench_example/                  # Example VBench video generation workflow
 ```
 
 ## Quickstart
@@ -234,17 +233,60 @@ python train.py --base <config.yaml> -t --auto_resume --name <experiment> --logd
 
 `--auto_resume` searches the experiment work directory for the latest full-info checkpoint.
 
-## Evaluation
+## Video Generation
 
-The repository includes VBench helper scripts:
+The repository includes an example image-to-video usage in `VBench_example/`. The workflow first generates Wan2.1 latents for VBench prompts and reference images, then decodes the same latents with either RefDecoder or the original Wan VAE decoder.
 
 ```text
-VBench_eval/decode_refdecoder_vbench.py
-VBench_eval/generate_wan_latents_vbench.py
-VBench_eval/decode_wanvae_vbench.py
+VBench_example/generate_wan_latents_vbench.py
+VBench_example/decode_refdecoder_vbench.py
+VBench_example/decode_wanvae_vbench.py
 ```
 
-Use these when comparing RefDecoder reconstruction against the original Wan VAE pipeline on VBench-style latent/video data.
+Example latent generation:
+
+```bash
+python VBench_example/generate_wan_latents_vbench.py \
+  --vbench_info_path /path/to/VBench/vbench2_beta_i2v/vbench2_i2v_full_info.json \
+  --image_folder /path/to/VBench/vbench2_beta_i2v/data/crop/16-9 \
+  --output_dir outputs/vbench/wan2.1_480p_latents \
+  --samples_per_prompt 5 \
+  --device cuda:0
+```
+
+Decode the generated latents with RefDecoder:
+
+```bash
+python VBench_example/decode_refdecoder_vbench.py \
+  --config_path configs/inference/eval_wan.yaml \
+  --latent_dir outputs/vbench/wan2.1_480p_latents \
+  --image_folder /path/to/VBench/vbench2_beta_i2v/data/crop/16-9 \
+  --output_dir outputs/vbench/refdecoder_480p_videos \
+  --device cuda:0
+```
+
+Decode the same latents with the original Wan VAE baseline:
+
+```bash
+python VBench_example/decode_wanvae_vbench.py \
+  --latent_dir outputs/vbench/wan2.1_480p_latents \
+  --output_dir outputs/vbench/wanvae_480p_videos \
+  --device cuda:0
+```
+
+For multi-GPU runs, launch one process per GPU and set `--rank` and `--world_size` so each process handles a different slice of the VBench examples.
+
+## Results
+
+We report RefDecoder against the original VAE decoders in reconstruction and image-to-video generation settings. The table screenshots should be placed under `assets/results/`.
+
+### Reconstruction Quality
+
+![Reconstruction quality comparison](assets/results/reconstruction_quality_table.png)
+
+### VBench Image-to-Video Quality
+
+![VBench image-to-video comparison](assets/results/vbench_i2v_quality_table.png)
 
 ## Acknowledgements
 
@@ -252,4 +294,4 @@ This project builds on the Wan2.1 VAE ecosystem and VideoVAE+ style video autoen
 
 ## License
 
-See `LICENSE`.
+See [LICENSE](LICENSE).

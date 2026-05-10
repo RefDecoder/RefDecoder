@@ -20,7 +20,7 @@ def parse_args():
                         default="<PATH_TO_VBENCH_IMAGES>",  # e.g. /path/to/VBench/vbench2_beta_i2v/data/crop/16-9
                         help="Path to VBench images (for reference frames)")
     parser.add_argument("--output_dir", type=str,
-                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_eval/refdecoder_480p_videos
+                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_example/refdecoder_480p_videos
     parser.add_argument("--device", type=str, default="cuda:0")
     return parser.parse_args()
 

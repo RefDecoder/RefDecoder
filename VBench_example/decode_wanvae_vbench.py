@@ -12,7 +12,7 @@ def parse_args():
     parser.add_argument("--world_size", type=int, default=1)
     parser.add_argument("--latent_dir", type=str, required=True, help="Directory containing .pt latent files")
     parser.add_argument("--output_dir", type=str,
-                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_eval/wanvae_480p_videos
+                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_example/wanvae_480p_videos
     parser.add_argument("--device", type=str, default="cuda:0")
     return parser.parse_args()
 

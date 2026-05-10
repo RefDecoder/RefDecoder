@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--image_folder", type=str,
                         default="<PATH_TO_VBENCH_IMAGES>")  # e.g. /path/to/VBench/vbench2_beta_i2v/data/crop/16-9
     parser.add_argument("--output_dir", type=str,
-                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_eval/wan2.1_480p_latents
+                        default="<PATH_TO_OUTPUT_DIR>")  # e.g. /path/to/RefDecoder/VBench_example/wan2.1_480p_latents
     parser.add_argument("--num_frames", type=int, default=17)
     parser.add_argument("--num_inference_steps", type=int, default=50)
     parser.add_argument("--guidance_scale", type=float, default=5.0)
