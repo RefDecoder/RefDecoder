@@ -7,7 +7,7 @@ RefDecoder is a training and inference framework for adding reference-frame cond
 - **Wan2.1 VAE**: a RefDecoder path built on the Wan2.1 image-to-video VAE decoder.
 - **VideoVAE+**: a RefDecoder path built on a 2+1D VideoVAE+ autoencoder.
 
-The repository focuses on reconstruction, finetuning, and video generation workflows that replace the original VAE decoder with RefDecoder. It is not a full text-to-video training pipeline like the original Wan2.1 repository.
+The repository focuses on reconstruction, finetuning, and video generation workflows that replace the original VAE decoder with RefDecoder..
 
 ## News
 
