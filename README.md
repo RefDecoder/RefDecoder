@@ -1,6 +1,6 @@
 # RefDecoder
 
-Reference-conditioned video VAE decoding for high-fidelity video reconstruction.
+Reference-conditioned video VAE decoding for high-fidelity video reconstruction and generation.
 
 RefDecoder is a training and inference framework for adding reference-frame conditioning to video autoencoders. It is designed around two backbones:
 
