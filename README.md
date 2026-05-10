@@ -1,4 +1,4 @@
-WILL UPDATE MORE!!!
+First Draft, will do more updates
 # RefDecoder
 
 Reference-conditioned video VAE decoding for high-fidelity video reconstruction.
