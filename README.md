@@ -52,7 +52,7 @@ RefDecoder/
 This project expects Python 3.10 and CUDA-capable PyTorch. The included `pyproject.toml` pins the main dependencies, including `torch==2.7.0`.
 
 ```bash
-git clone <TODO: repo url>
+git clone https://github.com/RefDecoder/RefDecoder.git
 cd RefDecoder
 
 pip install -U uv
