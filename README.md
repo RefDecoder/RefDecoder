@@ -16,10 +16,9 @@ The repository focuses on reconstruction, finetuning, and video generation workf
 
 ## Contributions
 
-- **Reference-conditioned decoding**: RefDecoder injects a selected reference frame into the decoder so the reconstruction can preserve appearance and identity cues across the video.
+- **Reference-conditioned decoding**: RefDecoder injects a selected reference frame into the decoder so the reconstruction and generation can preserve appearance and identity cues across the video.
 - **Backbone-compatible design**: the same training and inference entry points support both Wan2.1 VAE and VideoVAE+ variants.
 - **Decoder-focused finetuning**: the configs freeze large parts of the pretrained autoencoder and train the reference modules, decoder-side transformer blocks, and selected decoder parameters.
-- **Chunked long-video inference**: videos are reconstructed in chunks while using a consistent reference frame from the original input video.
 - **Training and video generation utilities**: the repo includes Lightning/DeepSpeed training, image logging, reconstruction metrics, and VBench-oriented generation examples.
 
 ## Project Structure
