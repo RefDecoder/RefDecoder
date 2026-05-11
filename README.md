@@ -70,18 +70,35 @@ You also need a working FFmpeg/libx264 setup because inference writes reconstruc
 
 #### Model Download
 
-| Model | Download Link | Notes |
+| Model | File | Notes |
 | --- | --- | --- |
-| RefDecoder-Wan | TODO: Hugging Face link | Wan2.1 VAE based RefDecoder checkpoint |
-| RefDecoder-VideoVAEPlus | TODO: Hugging Face link | VideoVAE+ based RefDecoder checkpoint |
+| RefDecoder-Wan | `VAE/Wan2.1/wan2.1_ref.pt` | Wan2.1 VAE based RefDecoder checkpoint |
+| RefDecoder-VideoVAEPlus | `VAE/VideoVAEPlus/videovaeplus_ref.pt` | VideoVAE+ based RefDecoder checkpoint |
+
+Download both checkpoints at once with the Hugging Face CLI:
+
+```bash
+huggingface-cli download Arrokothwhi/RefDecoder --local-dir ckpt/RefDecoder
+```
+
+Or in Python:
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(repo_id="Arrokothwhi/RefDecoder", local_dir="ckpt/RefDecoder")
+```
 
 Expected layout:
 
 ```text
 ckpt/
 ├── RefDecoder/
-│   ├── refdecoder_wan.ckpt
-│   └── refdecoder_videovaeplus.ckpt
+│   └── VAE/
+│       ├── Wan2.1/
+│       │   └── wan2.1_ref.pt
+│       └── VideoVAEPlus/
+│           └── videovaeplus_ref.pt
 └── VideoVAEPlus/
     └── sota-4-16z.ckpt
 ```
