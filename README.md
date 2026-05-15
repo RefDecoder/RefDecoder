@@ -310,6 +310,22 @@ We report RefDecoder against the original VAE decoders in reconstruction and ima
 
 This project builds on the Wan2.1 VAE ecosystem and VideoVAE+ style video autoencoders. The README structure is adapted from the Wan2.1 project README while focusing on this repository's reference-conditioned reconstruction pipeline.
 
+## Citation
+
+If you use RefDecoder in your research or applications, please cite the project:
+
+```bibtex
+@misc{fan2026refdecoderenhancingvisualgeneration,
+      title={RefDecoder: Enhancing Visual Generation with Conditional Video Decoding},
+      author={Xiang Fan and Yuheng Wang and Bohan Fang and Zhongzheng Ren and Ranjay Krishna},
+      year={2026},
+      eprint={2605.15196},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2605.15196},
+}
+```
+
 ## License
 
 See [LICENSE](LICENSE).
