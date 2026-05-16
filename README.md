@@ -72,35 +72,45 @@ You also need a working FFmpeg/libx264 setup because inference writes reconstruc
 
 #### Model Download
 
-| Model | File | Notes |
+| Model | Preferred local file | Notes |
 | --- | --- | --- |
-| RefDecoder-Wan | `VAE/Wan2.1/wan2.1_ref.pt` | Wan2.1 VAE based RefDecoder checkpoint |
-| RefDecoder-VideoVAEPlus | `VAE/VideoVAEPlus/videovaeplus_ref.pt` | VideoVAE+ based RefDecoder checkpoint |
+| RefDecoder-Wan | `ckpt/I2V_Wan2.1/model.pt` | Wan2.1 image-to-video RefDecoder checkpoint used by the Gradio demo |
+| RefDecoder-Wan fallback | `ckpt/VAE/Wan2.1/wan2.1_ref.pt` | Legacy Wan checkpoint filename also accepted by the loader |
+| RefDecoder-VideoVAEPlus | `ckpt/VAE/VideoVAEPlus/videovaeplus_ref.pt` | VideoVAE+ based RefDecoder checkpoint |
 
-Download both checkpoints at once with the Hugging Face CLI:
+For the Gradio demo, download the Wan checkpoint to the preferred path:
 
 ```bash
-huggingface-cli download Arrokothwhi/RefDecoder --local-dir ckpt/RefDecoder
+mkdir -p ckpt/I2V_Wan2.1
+huggingface-cli download Arrokothwhi/RefDecoder I2V_Wan2.1/model.pt \
+  --local-dir ckpt
 ```
 
-Or in Python:
-
-```python
-from huggingface_hub import snapshot_download
-
-snapshot_download(repo_id="Arrokothwhi/RefDecoder", local_dir="ckpt/RefDecoder")
-```
-
-Expected layout:
+Expected layout for the demo:
 
 ```text
 ckpt/
-├── RefDecoder/
-│   └── VAE/
-│       ├── Wan2.1/
-│       │   └── wan2.1_ref.pt
-│       └── VideoVAEPlus/
-│           └── videovaeplus_ref.pt
+└── I2V_Wan2.1/
+    └── model.pt
+```
+
+To download all published RefDecoder checkpoints while preserving the same layout:
+
+```bash
+huggingface-cli download Arrokothwhi/RefDecoder --local-dir ckpt
+```
+
+Full checkpoint layout:
+
+```text
+ckpt/
+├── I2V_Wan2.1/
+│   └── model.pt
+├── VAE/
+│   ├── Wan2.1/
+│   │   └── wan2.1_ref.pt
+│   └── VideoVAEPlus/
+│       └── videovaeplus_ref.pt
 └── VideoVAEPlus/
     └── sota-4-16z.ckpt
 ```
@@ -110,7 +120,31 @@ Additional base-model requirements:
 - The Wan path initializes its base VAE from `Wan-AI/Wan2.1-I2V-14B-480P-Diffusers`, subfolder `vae`. Make sure the Hugging Face model is accessible or already cached.
 - The VideoVAE+ path currently loads `ckpt/VideoVAEPlus/sota-4-16z.ckpt` during model initialization. Place that base checkpoint at the path above, or update the path in `src/models/VideoVAEPlus/videovaeplus_ref0conv.py`.
 
-### 3. Prepare Data
+### 3. Run the Gradio Demo
+
+Launch the local image-to-video demo with one command:
+
+```bash
+python demo.py
+```
+
+The launcher checks for a RefDecoder Wan checkpoint before starting. Prefer placing it at `ckpt/I2V_Wan2.1/model.pt`. It also accepts `--ckpt-path`, `REFDECODER_CKPT_PATH`, fallback filenames listed in `REFDECODER_CKPT_FILENAMES`, an existing Hugging Face cache entry, or downloads from `Arrokothwhi/RefDecoder` if needed. When the server starts, it prints the listening address and port:
+
+```text
+[demo] Listening on: http://<host>:<port>
+```
+
+Useful options:
+
+```bash
+python demo.py --port 7861
+python demo.py --ckpt-path /path/to/model.pt --local-files-only
+python demo.py --no-cpu-offload --device cuda:0
+```
+
+The first generation may still load or download the Wan diffusers weights from `Wan-AI/Wan2.1-I2V-14B-480P-Diffusers` unless they are already cached.
+
+### 4. Prepare Data
 
 Training uses a CSV file with at least one column named `path`.
 
