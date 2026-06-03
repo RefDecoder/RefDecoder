@@ -4,12 +4,16 @@ Reference-conditioned video VAE decoding for high-fidelity video reconstruction 
 
 [Project Page](https://refdecoder.github.io/) | [🤗 HuggingFace](https://huggingface.co/Arrokothwhi/RefDecoder) | [arXiv](https://arxiv.org/abs/2605.15196)
 
+![RefDecoder teaser](assets/refdecoder_teaser.png)
+
 RefDecoder is a training and inference framework for adding reference-frame conditioning to video autoencoders. It is designed around two backbones:
 
 - **Wan2.1 VAE**: a RefDecoder path built on the Wan2.1 image-to-video VAE decoder.
 - **VideoVAE+**: a RefDecoder path built on a 2+1D VideoVAE+ autoencoder.
 
 The repository focuses on reconstruction, finetuning, and video generation workflows that replace the original VAE decoder with RefDecoder..
+
+![RefDecoder architecture](assets/refdecoder_arch.jpg)
 
 ## News
 
