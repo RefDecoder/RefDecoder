@@ -1,7 +1,7 @@
 model:
   base_learning_rate: 2.0e-4
   scale_lr: True
-  target: src.models.VideoVaePlus.videovaeplus_ref0conv.AutoencoderKL2plus1D_1dcnn
+  target: src.models.VideoVAEPlus.videovaeplus_ref0conv.AutoencoderKL2plus1D_1dcnn
   params:
     # monitor: "val/rec_loss"
     video_key: video

@@ -1,5 +1,5 @@
 model:
-  target: src.models.transformerwrapper.AutoencoderWanTransformer
+  target: src.models.Wan.transformerwrapper.AutoencoderWanTransformer
   base_learning_rate: 1.0e-4
   params:
     base_learning_rate: ${model.base_learning_rate} 
