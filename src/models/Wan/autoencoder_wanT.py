@@ -59,8 +59,7 @@ def resolve_activation(x):
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
-CACHE_T = 0
-LATENT_T_STRIDE = 100
+CACHE_T = 2
 GRADIENT_CHECKPOINTING = False
 
 class AvgDown3D(nn.Module):
@@ -195,71 +194,14 @@ class WanCausalConv3d(nn.Conv3d):
         self._padding = (self.padding[2], self.padding[2], self.padding[1], self.padding[1], 2 * self.padding[0], 0)
         self.padding = (0, 0, 0)
 
-    def forward(self, x, cache_x=None, mode=None):
+    def forward(self, x, cache_x=None):
         padding = list(self._padding)
         if cache_x is not None and self._padding[4] > 0:
             cache_x = cache_x.to(x.device)
             x = torch.cat([cache_x, x], dim=2)
             padding[4] -= cache_x.shape[2]
-
-        if mode == 'upsample3d':
-            # x: BCTHW
-            assert self.stride[0] == 1 and self.stride[1] == 1 and self.stride[2] == 1
-            assert self.kernel_size[0] == 3
-
-            assert padding[0] == padding[1] and padding[2] == padding[3]
-
-            results = []
-            for i in range(x.shape[2] if padding[-2] == 2 else x.shape[2] - 1):
-                if padding[-2] == 2:
-                    if i == 0:
-                        out = F.conv3d(x[:, :, 0:1, :, :], self.weight, self.bias, self.stride, (2, padding[2], padding[0]))[:, :, :-2]  # BC1HW
-                    elif i == 1:
-                        out = F.conv3d(x[:, :, 0:2, :, :], self.weight, self.bias, self.stride, (1, padding[2], padding[0]))[:, :, :-1]  # BC1HW
-                    else:
-                        out = F.conv3d(x[:, :, i - 2: i - 2 + self.kernel_size[0], :, :], self.weight, self.bias, self.stride, (0, padding[2], padding[0]))  # BC1HW
-                elif padding[-2] == 1:
-                    if i == 0:
-                        out = F.conv3d(x[:, :, 0:2, :, :], self.weight, self.bias, self.stride, (1, padding[2], padding[0]))[:, :, :-1]  # BC1HW
-                    else:
-                        out = F.conv3d(x[:, :, i - 1: i - 1 + self.kernel_size[0], :, :], self.weight, self.bias, self.stride, (0, padding[2], padding[0]))  # BC1HW
-                else:
-                    raise ValueError("Invalid padding for causal conv3d in upsample3d mode.")
-                results.append(out)
-
-            if not results:
-                breakpoint() # TODO
-
-            return torch.cat(results, dim=2)  # BCTHW
-
         x = F.pad(x, padding)
         return super().forward(x)
-
-
-        '''
-        if mode == "upsample3d":
-            padding = list(self._padding)
-            x = F.pad(x, padding)
-            t = x.shape[2]
-            itr = t - 2
-            print(f"DEBUG: time frame {t}")
-            out = super().forward(x[:, :, :1, :, :])
-            for i in range(1, itr):
-                out_ = super().forward(x[:, :, i: i + 4, :, :])
-                out = torch.cat([out, out_], 2)
-            return out
-        else:
-            padding = list(self._padding)
-            if cache_x is not None and self._padding[4] > 0:
-                cache_x = cache_x.to(x.device)
-                x = torch.cat([cache_x, x], dim=2)
-                padding[4] -= cache_x.shape[2]
-            x = F.pad(x, padding)
-            
-            print(x.shape, self.weight.shape)
-            print(x.dtype, self.weight.dtype)
-            return super().forward(x)
-        '''
 
 
 class WanRMS_norm(nn.Module):
@@ -353,39 +295,21 @@ class WanResample(nn.Module):
 
         if self.mode == "upsample3d":
             if feat_cache is not None and not is_reference:
-                # Latent frames: full caching logic
                 idx = feat_idx[0]
-
                 if feat_cache[idx] is None:
-                    if t <= 1:
-                        feat_cache[idx] = "Rep"
-                        feat_idx[0] += 1
-                    else:
-                        subseq = x[:, :, 1:]
-                        cache_x = subseq[:, :, -CACHE_T:, :, :].clone() if CACHE_T > 0 else subseq[:, :, :0, :, :]
-                        if cache_x.shape[2] < 2:
-                            cache_x = torch.cat([torch.zeros_like(cache_x).to(cache_x.device), cache_x], dim=2)
-
-                        subseq = self.time_conv(subseq, mode=self.mode)
-
-                        feat_cache[idx] = cache_x
-                        feat_idx[0] += 1
-
-                        subseq = subseq.reshape(b, 2, c, t - 1, h, w)
-                        subseq = torch.stack((subseq[:, 0, :, :, :, :], subseq[:, 1, :, :, :, :]), 3)
-                        subseq = subseq.reshape(b, c, (t - 1) * 2, h, w)
-                        x = torch.cat([x[:, :, :1, :, :], subseq], dim=2)
+                    feat_cache[idx] = "Rep"
+                    feat_idx[0] += 1
                 else:
-                    cache_x = x[:, :, -CACHE_T:, :, :].clone() if CACHE_T > 0 else x[:, :, :0, :, :]
+                    cache_x = x[:, :, -CACHE_T:, :, :].clone()
                     if cache_x.shape[2] < 2 and feat_cache[idx] is not None and feat_cache[idx] != "Rep":
                         cache_x = torch.cat([feat_cache[idx][:, :, -1:, :, :].to(cache_x.device), cache_x], dim=2)
                     if cache_x.shape[2] < 2 and feat_cache[idx] is not None and feat_cache[idx] == "Rep":
                         cache_x = torch.cat([torch.zeros_like(cache_x).to(cache_x.device), cache_x], dim=2)
 
                     if feat_cache[idx] == "Rep":
-                        x = self.time_conv(x, mode=self.mode)
+                        x = self.time_conv(x)
                     else:
-                        x = self.time_conv(x, feat_cache[idx], mode=self.mode)
+                        x = self.time_conv(x, feat_cache[idx])
 
                     feat_cache[idx] = cache_x
                     feat_idx[0] += 1
@@ -467,11 +391,11 @@ class WanResidualBlock(nn.Module):
             if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
                 cache_x = torch.cat([feat_cache[idx][:, :, -1:, :, :].to(cache_x.device), cache_x], dim=2)
 
-            x = self.conv1(x, feat_cache[idx], mode='upsample3d')
+            x = self.conv1(x, feat_cache[idx])
             feat_cache[idx] = cache_x
             feat_idx[0] += 1
         else:
-            x = self.conv1(x, mode='upsample3d')
+            x = self.conv1(x)
 
         # Second normalization and activation
         x = self.norm2(x)
@@ -486,11 +410,11 @@ class WanResidualBlock(nn.Module):
             if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
                 cache_x = torch.cat([feat_cache[idx][:, :, -1:, :, :].to(cache_x.device), cache_x], dim=2)
 
-            x = self.conv2(x, feat_cache[idx], mode='upsample3d')
+            x = self.conv2(x, feat_cache[idx])
             feat_cache[idx] = cache_x
             feat_idx[0] += 1
         else:
-            x = self.conv2(x, mode='upsample3d')
+            x = self.conv2(x)
 
         # Add residual connection
         return x + h
@@ -1210,12 +1134,25 @@ class WanDecoder3d(nn.Module):
 
     def forward(self, x, transformer, feat_cache=None, feat_idx=[0], first_chunk=False, reference_frame=None, skip=False, window_size=-1):
         run_attn = not self.skip_decoder_attention and not skip
-        if self.gradient_checkpointing:
-            x = torch.utils.checkpoint.checkpoint(
-                self.conv_in, 
-                x,
-                use_reentrant=False
+        if feat_cache is not None:
+            idx = feat_idx[0]
+            previous_cache = feat_cache[idx]
+            cache_x = x[:, :, -CACHE_T:, :, :].clone()
+            if cache_x.shape[2] < CACHE_T and previous_cache is not None:
+                cache_x = torch.cat([previous_cache[:, :, -1:, :, :].to(cache_x.device), cache_x], dim=2)
+            if self.gradient_checkpointing:
+                x = torch.utils.checkpoint.checkpoint(
+                    self.conv_in,
+                    x,
+                    previous_cache,
+                    use_reentrant=False,
                 )
+            else:
+                x = self.conv_in(x, previous_cache)
+            feat_cache[idx] = cache_x
+            feat_idx[0] += 1
+        elif self.gradient_checkpointing:
+            x = torch.utils.checkpoint.checkpoint(self.conv_in, x, use_reentrant=False)
         else:
             x = self.conv_in(x)
 
@@ -1272,14 +1209,24 @@ class WanDecoder3d(nn.Module):
                         for c in feat_cache
                     ] if feat_cache is not None else None
 
-                    def checkpoint_fn(x, block_idx=i):
+                    def checkpoint_fn(
+                        x,
+                        block_idx=i,
+                        cache_idx=initial_idx,
+                        cache_snapshot=initial_cache_snapshot,
+                        block_feat_cache=feat_cache,
+                        block_feat_idx=feat_idx,
+                        block_first_chunk=first_chunk,
+                    ):
                         # Restore state before each run to ensure consistency
-                        feat_idx[0] = initial_idx
-                        if initial_cache_snapshot is not None:
-                            for j in range(len(feat_cache)):
-                                val = initial_cache_snapshot[j]
-                                feat_cache[j] = val.clone() if isinstance(val, torch.Tensor) else val
-                        return self.up_blocks[block_idx](x, feat_cache, feat_idx, first_chunk=first_chunk)
+                        block_feat_idx[0] = cache_idx
+                        if cache_snapshot is not None:
+                            for j in range(len(block_feat_cache)):
+                                val = cache_snapshot[j]
+                                block_feat_cache[j] = val.clone() if isinstance(val, torch.Tensor) else val
+                        return self.up_blocks[block_idx](
+                            x, block_feat_cache, block_feat_idx, first_chunk=block_first_chunk
+                        )
 
                     x = torch.utils.checkpoint.checkpoint(
                         checkpoint_fn,
@@ -1297,16 +1244,27 @@ class WanDecoder3d(nn.Module):
         x = self.norm_out(x)
         x = self.nonlinearity(x)
         
-        if self.gradient_checkpointing:
-            x = torch.utils.checkpoint.checkpoint(
-                self.conv_out,
-                x,
-                None,
-                'upsample3d',
-                use_reentrant=False,
-            )
+        if feat_cache is not None:
+            idx = feat_idx[0]
+            previous_cache = feat_cache[idx]
+            cache_x = x[:, :, -CACHE_T:, :, :].clone()
+            if cache_x.shape[2] < CACHE_T and previous_cache is not None:
+                cache_x = torch.cat([previous_cache[:, :, -1:, :, :].to(cache_x.device), cache_x], dim=2)
+            if self.gradient_checkpointing:
+                x = torch.utils.checkpoint.checkpoint(
+                    self.conv_out,
+                    x,
+                    previous_cache,
+                    use_reentrant=False,
+                )
+            else:
+                x = self.conv_out(x, previous_cache)
+            feat_cache[idx] = cache_x
+            feat_idx[0] += 1
+        elif self.gradient_checkpointing:
+            x = torch.utils.checkpoint.checkpoint(self.conv_out, x, use_reentrant=False)
         else:
-            x = self.conv_out(x, mode='upsample3d')
+            x = self.conv_out(x)
         return x
 
 
@@ -1589,24 +1547,25 @@ class AutoencoderKLWan(ModelMixin, ConfigMixin, FromOriginalModelMixin):
     def _encode(self, x: torch.Tensor):
         _, _, num_frame, height, width = x.shape
 
-        if self.use_tiling and (width > self.tile_sample_min_width or height > self.tile_sample_min_height):
-            return self.tiled_encode(x, is_reference)
-
         self.clear_cache()
         if self.config.patch_size is not None:
             x = patchify(x, patch_size=self.config.patch_size)
-        iter_ = 1 #TODO
+
+        if self.use_tiling and (width > self.tile_sample_min_width or height > self.tile_sample_min_height):
+            return self.tiled_encode(x, is_reference)
+
+        iter_ = 1 + (num_frame - 1) // 4
         for i in range(0, iter_):
             self._enc_conv_idx = [0]
             if i == 0:
                 out = self.encoder(
-                    x[:, :, : 4 * LATENT_T_STRIDE - 3, :, :], 
+                    x[:, :, :1, :, :], 
                     feat_cache=self._enc_feat_map, 
                     feat_idx=self._enc_conv_idx,
                 )
             else:
                 out_ = self.encoder(
-                    x[:, :, i * 4 * LATENT_T_STRIDE - 3 :  (i + 1) * 4 * LATENT_T_STRIDE - 3, :, :],
+                    x[:, :, 1 + 4 * (i - 1):1 + 4 * i, :, :],
                     feat_cache=self._enc_feat_map,
                     feat_idx=self._enc_conv_idx,
                 )
@@ -1659,12 +1618,12 @@ class AutoencoderKLWan(ModelMixin, ConfigMixin, FromOriginalModelMixin):
 
         x = self._apply_token_dropout(x)
 
-        for i in range(0, num_frame, LATENT_T_STRIDE):
+        for i in range(num_frame):
             self._conv_idx = [0]
             self._conv_idx_ref = [0]
             if i == 0:
                 out = self.decoder(
-                    x[:, :, i : i + LATENT_T_STRIDE, :, :],
+                    x[:, :, i : i + 1, :, :],
                     transformer=transformer,          
                     feat_cache=self._feat_map,
                     feat_idx=self._conv_idx,
@@ -1675,7 +1634,7 @@ class AutoencoderKLWan(ModelMixin, ConfigMixin, FromOriginalModelMixin):
                 )
             else:
                 out_ = self.decoder(
-                    x[:, :, i : i + LATENT_T_STRIDE, :, :],
+                    x[:, :, i : i + 1, :, :],
                     transformer=transformer,
                     feat_cache=self._feat_map,
                     feat_idx=self._conv_idx,
