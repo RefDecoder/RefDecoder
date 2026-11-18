@@ -344,6 +344,8 @@ We report RefDecoder against the original VAE decoders in reconstruction and ima
 
 ![VBench image-to-video comparison](assets/results/vbench_i2v_quality_table.png)
 
+VBench results (12 dimensions) on the Wan 2.1 backbone at 17 and 81 frames. RefDecoder† denotes the causal variant. Best results per frame count are in bold.
+
 ## Acknowledgements
 
 This project builds on the Wan2.1 VAE ecosystem and VideoVAE+ style video autoencoders. The README structure is adapted from the Wan2.1 project README while focusing on this repository's reference-conditioned reconstruction pipeline.
